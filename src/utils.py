@@ -4,22 +4,25 @@ import numpy as np
 from sklearn.preprocessing import LabelEncoder
 
 
-def get_dataset(dataset_path: str, target: str, train_size = 0.8) -> Tuple[Dict[str, np.ndarray], List[int], List[int]]:
+def get_dataset(dataset_path: str, target: str, train_size = 0.8, labeled_ratio = 0.15) -> Tuple[Dict[str, Tuple[np.ndarray, np.ndarray]], List[int], List[int]]:
     if train_size > 1.0 or train_size < 0.0:
         print("train size is invalid")
-        train_size = 0.8
+        raise ValueError
 
     valid_size = (1 - train_size) / 2
     test_size = 1.0 - train_size - valid_size
 
-    target = target
+    # train labeled & unlabeled size
+    labeled_size = train_size * labeled_ratio
+    unlabeled_size = train_size - labeled_size
 
     # read csv
     df = pd.read_csv(dataset_path)
     # split train, valid and test
     if "Set" not in df.columns:
-        df["Set"] = np.random.choice(["train", "valid", "test"], p =[train_size, valid_size, test_size], size=(df.shape[0],))    
-    train_indices = df[df.Set=="train"].index
+        df["Set"] = np.random.choice(["train_labeled", "train_unlabeled", "valid", "test"], p =[labeled_size, unlabeled_size, valid_size, test_size], size=(df.shape[0],))    
+    train_l_indices = df[df.Set=="train_labeled"].index
+    train_u_indices = df[df.Set=="train_unlabeled"].index
     valid_indices = df[df.Set=="valid"].index
     test_indices = df[df.Set=="test"].index
 
@@ -39,7 +42,7 @@ def get_dataset(dataset_path: str, target: str, train_size = 0.8) -> Tuple[Dict[
             categorical_columns.append(col)
             categorical_dims[col] = len(l_enc.classes_)
         else:
-            df[col].fillna(df.loc[train_indices, col].mean(), inplace=True)
+            df[col].fillna(df.loc[train_l_indices, col].mean(), inplace=True)
 
     # Define categorical features for categorical embeddings
     unused_feat = ["Set"]
@@ -50,9 +53,13 @@ def get_dataset(dataset_path: str, target: str, train_size = 0.8) -> Tuple[Dict[
     # dimensions of categorical features
     cat_dims = [categorical_dims[f] for i, f in enumerate(features) if f in categorical_columns]
 
-    # train
-    X_train = df[features].values[train_indices]
-    y_train = df[target].values[train_indices]
+    # train labeled
+    X_l_train = df[features].values[train_l_indices]
+    y_l_train = df[target].values[train_l_indices]
+
+    # train unlabeled
+    X_u_train = df[features].values[train_u_indices]
+    y_u_train = df[target].values[train_u_indices]
 
     # valid
     X_valid = df[features].values[valid_indices]
@@ -62,7 +69,11 @@ def get_dataset(dataset_path: str, target: str, train_size = 0.8) -> Tuple[Dict[
     X_test = df[features].values[test_indices]
     y_test = df[target].values[test_indices]
 
-    dataset = {"train": (X_train, y_train), "valid": (X_valid, y_valid), "test": (X_test, y_test)}
+    dataset = {
+        "train_labeled": (X_l_train, y_l_train),
+        "train_unlabeled": (X_u_train, y_u_train),
+        "valid": (X_valid, y_valid),
+        "test": (X_test, y_test)}
 
     return dataset, cat_idxs, cat_dims
 
