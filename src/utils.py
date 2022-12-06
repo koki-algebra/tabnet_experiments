@@ -5,11 +5,15 @@ from sklearn.preprocessing import LabelEncoder
 
 
 def get_dataset(dataset_path: str, target: str, train_size = 0.8, labeled_ratio = 0.15) -> Tuple[Dict[str, Tuple[np.ndarray, np.ndarray]], List[int], List[int]]:
+    # validate input value
     if train_size > 1.0 or train_size < 0.0:
-        print("train size is invalid")
-        raise ValueError
+        raise ValueError("train size is invalid")
+    if labeled_ratio > 1.0 or labeled_ratio < 0.0:
+        raise ValueError("labeled ratio is invalid")
 
+    # validation data size
     valid_size = (1 - train_size) / 2
+    # test data size
     test_size = 1.0 - train_size - valid_size
 
     # train labeled & unlabeled size
@@ -70,9 +74,9 @@ def get_dataset(dataset_path: str, target: str, train_size = 0.8, labeled_ratio 
     y_test = df[target].values[test_indices]
 
     dataset = {
-        "train_labeled": (X_l_train, y_l_train),
+        "train_labeled"  : (X_l_train, y_l_train),
         "train_unlabeled": (X_u_train, y_u_train),
-        "valid": (X_valid, y_valid),
-        "test": (X_test, y_test)}
+        "valid"          : (X_valid, y_valid),
+        "test"           : (X_test, y_test)}
 
     return dataset, cat_idxs, cat_dims
