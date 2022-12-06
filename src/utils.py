@@ -76,13 +76,3 @@ def get_dataset(dataset_path: str, target: str, train_size = 0.8, labeled_ratio 
         "test": (X_test, y_test)}
 
     return dataset, cat_idxs, cat_dims
-
-def rand_nodup(low: int, high: int, size: int) -> np.ndarray:
-    if abs(low) + high < size:
-        raise ValueError
-
-    r = set()
-    while len(r) < size:
-        r.add(np.random.randint(low, high))
-
-    return np.array(list(r))
