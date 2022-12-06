@@ -1,7 +1,6 @@
 import os
 import torch
-import numpy as np
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import accuracy_score
 
 from pytorch_tabnet.pretraining import TabNetPretrainer
 from pytorch_tabnet.tab_model import TabNetClassifier
@@ -9,7 +8,7 @@ from pytorch_tabnet.tab_model import TabNetClassifier
 from utils import get_dataset
 
 # get dataset, categorical indices, dimensions
-dataset, cat_idxs, cat_dims = get_dataset(dataset_path="./data/uci_income/adult.csv", target="salary", train_size=0.8, labeled_ratio=0.05)
+dataset, cat_idxs, cat_dims = get_dataset(dataset_path="./data/uci_income/adult.csv", target="salary", train_size=0.8, labeled_ratio=0.15)
 dataset_name = "UCI Income dataset"
 
 X_l_train, y_l_train = dataset["train_labeled"]
@@ -17,6 +16,7 @@ X_u_train, _         = dataset["train_unlabeled"]
 X_valid,   y_valid   = dataset["valid"]
 X_test,    y_test    = dataset["test"]
 
+# ----- Pre-training -----
 
 # Self-Supervised Learning
 pretrained_model = TabNetPretrainer(
@@ -44,6 +44,7 @@ pretrained_model.fit(
     pretraining_ratio=0.8
 )
 
+# ----- fine-tuning -----
 
 # Supervised Learning
 clf = TabNetClassifier(
@@ -59,7 +60,7 @@ clf.fit(
     y_train=y_l_train,
     eval_set=[(X_l_train, y_l_train), (X_valid, y_valid)],
     eval_name=["train", "valid"],
-    eval_metric=["auc"],
+    eval_metric=["accuracy"],
     max_epochs=max_epochs,
     patience=20,
     batch_size=1024,
@@ -71,12 +72,11 @@ clf.fit(
 )
 
 
-# Test
-preds = clf.predict_proba(X_test)
-test_auc = roc_auc_score(y_score=preds[:,1], y_true=y_test)
+# ----- test -----
 
-preds_valid = clf.predict_proba(X_valid)
-valid_auc = roc_auc_score(y_score=preds_valid[:,1], y_true=y_valid)
+# Accuracy
+pred_test = clf.predict(X_test)
+test_acc = accuracy_score(y_pred=pred_test, y_true=y_test)
 
 print(f"BEST VALID SCORE FOR {dataset_name} : {clf.best_cost}")
-print(f"FINAL TEST SCORE FOR {dataset_name} : {test_auc}")
+print(f"FINAL TEST SCORE FOR {dataset_name} : {test_acc}")
